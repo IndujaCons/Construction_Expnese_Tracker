@@ -2,15 +2,71 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { useProject } from '../lib/project-context'
 import InviteMemberModal from './InviteMemberModal'
 import ProjectSettingsModal from './ProjectSettingsModal'
 
 export default function ProjectManagement() {
+  const { data: session } = useSession()
   const { currentProject, projectMembers, currentUserRole, refreshProjectMembers, forceRefresh } = useProject()
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [deletingMemberId, setDeletingMemberId] = useState<number | null>(null)
   const router = useRouter()
+
+  const handleRemoveMember = async (memberId: number, memberName: string) => {
+    if (!currentProject) return
+    
+    const confirmed = window.confirm(
+      `Are you sure you want to remove ${memberName} from this project? This action cannot be undone.`
+    )
+    
+    if (!confirmed) return
+
+    setDeletingMemberId(memberId)
+    
+    try {
+      const response = await fetch(`/api/projects/${currentProject.id}/members`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ memberId }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        await refreshProjectMembers()
+        // Show success message (you could add a toast notification here)
+        console.log(data.message)
+      } else {
+        const errorData = await response.json()
+        alert(errorData.message || 'Failed to remove member')
+      }
+    } catch (error) {
+      console.error('Error removing member:', error)
+      alert('An error occurred while removing the member')
+    } finally {
+      setDeletingMemberId(null)
+    }
+  }
+
+  const canRemoveMember = (member: any) => {
+    // Only OWNER and ADMIN can remove members
+    if (currentUserRole !== 'OWNER' && currentUserRole !== 'ADMIN') return false
+    
+    // Cannot remove the project owner
+    if (member.role === 'OWNER') return false
+    
+    // Only owners can remove admins
+    if (member.role === 'ADMIN' && currentUserRole !== 'OWNER') return false
+    
+    // Cannot remove yourself
+    if (member.userId === session?.user?.id) return false
+    
+    return true
+  }
 
   if (!currentProject) {
     return (
@@ -117,7 +173,7 @@ export default function ProjectManagement() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-3">
                   <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                     member.role === 'OWNER'
                       ? 'bg-purple-100 text-purple-800'
@@ -129,6 +185,26 @@ export default function ProjectManagement() {
                   }`}>
                     {member.role}
                   </span>
+                  {canRemoveMember(member) && (
+                    <button
+                      onClick={() => handleRemoveMember(member.id, member.user.name || member.user.email)}
+                      disabled={deletingMemberId === member.id}
+                      className="px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1 text-xs font-medium"
+                      title={`Remove ${member.user.name || member.user.email} from project`}
+                    >
+                      {deletingMemberId === member.id ? (
+                        <div className="flex items-center space-x-1">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b border-red-700"></div>
+                          <span>Removing...</span>
+                        </div>
+                      ) : (
+                        <>
+                          <span>🗑️</span>
+                          <span>Remove</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

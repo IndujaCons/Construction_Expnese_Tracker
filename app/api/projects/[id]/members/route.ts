@@ -170,3 +170,121 @@ export async function POST(
     )
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await getSession()
+    if (!user) {
+      return NextResponse.json(
+        { message: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const { id } = await params
+    const projectId = parseInt(id)
+    const { memberId } = await request.json()
+
+    if (!memberId) {
+      return NextResponse.json(
+        { message: 'Member ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Check if current user has permission to remove members (OWNER or ADMIN)
+    const userMembership = await prisma.projectMember.findUnique({
+      where: {
+        userId_projectId: {
+          userId: user.id,
+          projectId: projectId
+        }
+      }
+    })
+
+    if (!userMembership || (userMembership.role !== 'OWNER' && userMembership.role !== 'ADMIN')) {
+      return NextResponse.json(
+        { message: 'Forbidden: You do not have permission to remove members' },
+        { status: 403 }
+      )
+    }
+
+    // Get the member to be removed
+    const memberToRemove = await prisma.projectMember.findUnique({
+      where: {
+        id: memberId,
+        projectId: projectId
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      }
+    })
+
+    if (!memberToRemove) {
+      return NextResponse.json(
+        { message: 'Member not found in this project' },
+        { status: 404 }
+      )
+    }
+
+    // Prevent removing the project owner
+    if (memberToRemove.role === 'OWNER') {
+      return NextResponse.json(
+        { message: 'Cannot remove the project owner' },
+        { status: 400 }
+      )
+    }
+
+    // Prevent non-owners from removing admins (only owners can remove admins)
+    if (memberToRemove.role === 'ADMIN' && userMembership.role !== 'OWNER') {
+      return NextResponse.json(
+        { message: 'Only project owners can remove admins' },
+        { status: 403 }
+      )
+    }
+
+    // Prevent users from removing themselves (they should leave the project instead)
+    if (memberToRemove.userId === user.id) {
+      return NextResponse.json(
+        { message: 'You cannot remove yourself. Use the leave project option instead.' },
+        { status: 400 }
+      )
+    }
+
+    // Remove the member
+    await prisma.projectMember.delete({
+      where: {
+        id: memberId
+      }
+    })
+
+    return NextResponse.json(
+      { 
+        message: `${memberToRemove.user.name || memberToRemove.user.email} has been removed from the project`,
+        removedMember: {
+          id: memberToRemove.id,
+          userId: memberToRemove.userId,
+          name: memberToRemove.user.name,
+          email: memberToRemove.user.email,
+          role: memberToRemove.role
+        }
+      },
+      { status: 200 }
+    )
+  } catch (error) {
+    console.error('Remove project member error:', error)
+    return NextResponse.json(
+      { message: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}

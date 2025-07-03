@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { User } from '../../lib/nextauth'
+import FileUpload from '../../components/FileUpload'
 
 interface Category {
   id: number
@@ -30,6 +31,7 @@ export default function AddExpenseForm({ categories, user, project }: AddExpense
     projectId: project.id,
     date: new Date().toISOString().split('T')[0], // Today's date
   })
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
@@ -49,6 +51,7 @@ export default function AddExpenseForm({ categories, user, project }: AddExpense
           ...formData,
           amount: parseFloat(formData.amount),
           categoryId: parseInt(formData.categoryId),
+          receiptUrl: receiptUrl,
         }),
       })
 
@@ -142,6 +145,22 @@ export default function AddExpenseForm({ categories, user, project }: AddExpense
           onChange={handleChange}
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Receipt (Optional)
+        </label>
+        <FileUpload
+          onFileSelect={(url) => setReceiptUrl(url)}
+          onFileRemove={() => setReceiptUrl(null)}
+          currentFile={receiptUrl}
+          accept="image/*,.pdf"
+          maxSizeMB={10}
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Upload a receipt image or PDF to keep track of your expenses
+        </p>
       </div>
 
       {error && (

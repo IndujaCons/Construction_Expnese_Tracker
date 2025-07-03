@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { amount, description, categoryId, projectId, date } = await request.json()
+    const { amount, description, categoryId, projectId, date, receiptUrl } = await request.json()
 
     if (!amount || !description || !categoryId || !projectId || !date) {
       return NextResponse.json(
@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
         projectId: parseInt(projectId),
         userId: user.id,
         date: new Date(date),
+        receiptUrl: receiptUrl || null,
       },
       include: {
         category: { select: { name: true } },

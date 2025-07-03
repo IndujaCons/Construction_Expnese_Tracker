@@ -9,6 +9,7 @@ interface Expense {
   amount: number
   description: string
   date: Date | string
+  receiptUrl?: string | null
   category: { name: string }
   user: { id: number; name: string | null; role: string | null }
 }
@@ -53,6 +54,9 @@ export default function ExpensesList({ initialExpenses, currentUserId }: Expense
                 👤 Added By
               </th>
               <th className="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">
+                📄 Receipt
+              </th>
+              <th className="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">
                 ⚙️ Actions
               </th>
             </tr>
@@ -81,6 +85,30 @@ export default function ExpensesList({ initialExpenses, currentUserId }: Expense
                       {expense.user.role || 'MEMBER'}
                     </span>
                   </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {expense.receiptUrl ? (
+                    <a
+                      href={expense.receiptUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center space-x-1 text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      {expense.receiptUrl.toLowerCase().includes('.pdf') ? (
+                        <>
+                          <span>📄</span>
+                          <span>PDF</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>🖼️</span>
+                          <span>Image</span>
+                        </>
+                      )}
+                    </a>
+                  ) : (
+                    <span className="text-gray-400 text-xs">No receipt</span>
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <DeleteExpenseButton
