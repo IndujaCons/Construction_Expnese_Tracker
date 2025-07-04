@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  buildbudget:
+    build: .
+    container_name: buildbudget-app
+    ports:
+      - "3001:3000"  
+    environment:
+      DATABASE_URL: "file:./buildbudget.db"
+      NEXTAUTH_URL: "https://buildbudget.in"
+      NEXTAUTH_SECRET: "your-nextauth-secret-here"
+      GOOGLE_CLIENT_ID: "your-google-client-id.apps.googleusercontent.com"
+      GOOGLE_CLIENT_SECRET: "your-google-client-secret"
+      NODE_ENV: "production"
+      PORT: 3000
+    volumes:
+      - .:/app
+    restart: always

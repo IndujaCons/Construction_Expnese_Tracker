@@ -1,0 +1,11 @@
+# On your VPS
+git clone https://github.com/IndujaCons/construction-expense-tracker.git /var/www/buildbudget
+cd /var/www/buildbudget
+
+# Add your production .env.local if needed (or use env vars in docker-compose)
+
+# Build and run
+docker-compose up -d --build
+
+# Check logs
+docker-compose logs -f
